@@ -27,7 +27,7 @@ void string_set::dump (FILE* out) {
       if (max_bucket_size < curr_size) max_bucket_size = curr_size;
       for (auto itor = set.cbegin (bucket);
            itor != set.cend (bucket); ++itor) {
-         if (need_index) fprintf (out, "string_set[%4zu]: ", bucket);  // Print this to file
+         if (need_index) fprintf (out, "string_set[%4zu]: ", bucket);
                     else fprintf (out, "           %4s   ", "");
          need_index = false;
          const string* str = &*itor;
@@ -36,7 +36,6 @@ void string_set::dump (FILE* out) {
       }
    }
    
-   // Print this to file
    fprintf (out, "load_factor = %.3f\n", set.load_factor());
    fprintf (out, "bucket_count = %zu\n", set.bucket_count());
    fprintf (out, "max_bucket_size = %zu\n", max_bucket_size);
