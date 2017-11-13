@@ -91,7 +91,7 @@ int scan_opts (int argc, char** argv) {
 
 int main (int argc, char** argv) {
    exec::execname = basename (argv[0]);
-   const char* execname = basename (argv[0]); 
+   //const char* execname = basename (argv[0]); 
    int exit_status = EXIT_SUCCESS;
    int optindex = 0;
    yy_flex_debug = 0;
@@ -138,6 +138,7 @@ int main (int argc, char** argv) {
 
     cpp_popen(filename);
 
+    /*
     while(1){
         int token = yylex();
         if(token == YYEOF) {
@@ -145,6 +146,11 @@ int main (int argc, char** argv) {
         }
         
         string_set::intern(yytext);
+    }
+    */
+    int parse_rc = yyparse();
+    if (parse_rc) {
+        errprintf ("parse failed (%d)\n", parse_rc);
     }
 
     if(str_file != NULL){
@@ -158,6 +164,8 @@ int main (int argc, char** argv) {
     
    cpp_pclose();
    yylex_destroy();
+   
+   
    
    fclose(tok_file);
       
