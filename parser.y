@@ -15,6 +15,8 @@
 %token-table
 %verbose
 
+
+
 %token TOK_VOID TOK_CHAR TOK_INT TOK_STRING
 %token TOK_IF TOK_ELSE TOK_WHILE TOK_RETURN TOK_STRUCT
 %token TOK_NULL TOK_NEW TOK_ARRAY
@@ -25,19 +27,19 @@
 %token TOK_POS TOK_NEG TOK_NEWARRAY TOK_TYPEID TOK_FIELD
 %token TOK_ORD TOK_CHR TOK_ROOT
 
-%start program
+%start start
 
 %%
 
-program : program token | ;
-token   : '(' | ')' | '[' | ']' | '{' | '}' | ';' | ',' | '.'
-        | '=' | '+' | '-' | '*' | '/' | '%' | '!'
-        | TOK_VOID | TOK_CHAR | TOK_INT | TOK_STRING
-        | TOK_IF | TOK_ELSE | TOK_WHILE | TOK_RETURN | TOK_STRUCT
-        | TOK_NULL | TOK_NEW | TOK_ARRAY
-        | TOK_EQ | TOK_NE | TOK_LT | TOK_LE | TOK_GT | TOK_GE
-        | TOK_IDENT | TOK_INTCON | TOK_CHARCON | TOK_STRINGCON
-        | TOK_ORD | TOK_CHR | TOK_ROOT
+start   : program           { yyparse_astree = $1; }
+        ;
+        
+program : program structdef { $$ = $1->adopt($2); }
+        | program function  { $$ = $1->adopt($2); }
+        | program statement { $$ = $1->adopt($2); }
+        | program error '}' { $$ = $1; }
+        | program error ';' { $$ = $1; }
+        |                   {$$ = parser::root; ]
         ;
 
 %%
