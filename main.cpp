@@ -89,6 +89,28 @@ int scan_opts (int argc, char** argv) {
    return optind;
 }
 
+void create_astree(string astFilename){
+    FILE* ast_file = fopen (astFilename.c_str(), "w");
+    
+    astree::print(ast_file, parser::root);
+    delete parser::root;
+    
+    if (ast_file == NULL) {
+        cerr << "Failed to open ast_file.\n";
+    }
+    
+    fclose(ast_file);
+
+}
+void create_str(string strFile){
+    FILE* str_file = fopen(strFile.c_str(),"w");
+    
+    if(str_file != NULL){
+        string_set::dump(str_file);
+        fclose(str_file);
+    } 
+}
+
 int main (int argc, char** argv) {
    exec::execname = basename (argv[0]);
    //const char* execname = basename (argv[0]); 
@@ -96,10 +118,6 @@ int main (int argc, char** argv) {
    int optindex = 0;
    yy_flex_debug = 0;
    yydebug = 0;
-   
-   
-   FILE* str_file;
-
    
    string out_filename = argv[argc - 1];
 
@@ -127,46 +145,29 @@ int main (int argc, char** argv) {
     size_t len = base_filename.length();
     string str_outfile = base_filename.substr(0, len-3) + ".str";
     string tok_outfile = base_filename.substr(0, len-3) + ".tok";
+    string ast_outfile = base_filename.substr(0, len-3) + ".ast";
    
-    str_file = fopen(str_outfile.c_str(),"w");
+
     tok_file = fopen(tok_outfile.c_str(), "w");
     
     if(tok_file == NULL){
-        cerr << "Failed to open tok_file";
+        cerr << "Failed to open tok_file\n";
         return 1;
-    }
-
+    }   
     cpp_popen(filename);
-
-    /*
-    while(1){
-        int token = yylex();
-        if(token == YYEOF) {
-            break;
-        }
-        
-        string_set::intern(yytext);
-    }
-    */
+    
     int parse_rc = yyparse();
     if (parse_rc) {
         errprintf ("parse failed (%d)\n", parse_rc);
     }
-
-    if(str_file != NULL){
-        string_set::dump(str_file);
-        fclose(str_file);
-    } 
-    if(tok_file == NULL){
-        cerr << "Failed to open tok_file";
-        return 1;
+    else{
+        create_astree(ast_outfile);
     }
+    create_str(str_outfile);
     
    cpp_pclose();
    yylex_destroy();
-   
-   
-   
+     
    fclose(tok_file);
       
    return exit_status;
