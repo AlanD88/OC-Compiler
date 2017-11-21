@@ -28,6 +28,7 @@ using namespace std;
 #include "string_set.h"
 #include "auxlib.h"
 #include "astree.h"
+#include "emitter.h"
 #include "lyutils.h"
 
 //const string CPP = "/usr/bin/cpp -nostdinc";
@@ -91,13 +92,17 @@ int scan_opts (int argc, char** argv) {
 
 void create_astree(string astFilename){
     FILE* ast_file = fopen (astFilename.c_str(), "w");
-    
-    astree::print(ast_file, parser::root);
-    delete parser::root;
-    
     if (ast_file == NULL) {
         cerr << "Failed to open ast_file.\n";
     }
+    else{
+        //astree::dump(ast_file, parser::root);
+        astree::print(ast_file, parser::root, 0);
+        //astree::dump_tree(ast_file, 0);
+        //emit_sm_code(parser::root);
+        delete parser::root;
+    }
+
     
     fclose(ast_file);
 
@@ -114,10 +119,9 @@ void create_str(string strFile){
 int main (int argc, char** argv) {
    exec::execname = basename (argv[0]);
    //const char* execname = basename (argv[0]); 
+
    int exit_status = EXIT_SUCCESS;
    int optindex = 0;
-   yy_flex_debug = 0;
-   yydebug = 0;
    
    string out_filename = argv[argc - 1];
 
@@ -134,40 +138,50 @@ int main (int argc, char** argv) {
         << endl;
         return EXIT_FAILURE;
     }
-    
+    if (yydebug or yy_flex_debug) {
+      fprintf (stderr, "Command:");
+      for (char** arg = &argv[0]; arg < &argv[argc]; ++arg) {
+            fprintf (stderr, " %s", *arg);
+      }
+      fprintf (stderr, "\n");
+   }
     //filename = optind == argc ? "-" : argv[optindex];
     filename = argv[optindex];
     
         
     string base_filename;
     base_filename = string(basename(filename));
-    //write to program.str
+    //write to program specific files (.str .tok .ast)
     size_t len = base_filename.length();
     string str_outfile = base_filename.substr(0, len-3) + ".str";
     string tok_outfile = base_filename.substr(0, len-3) + ".tok";
     string ast_outfile = base_filename.substr(0, len-3) + ".ast";
    
-
-    tok_file = fopen(tok_outfile.c_str(), "w");
     
+    tok_file = fopen(tok_outfile.c_str(), "w");
     if(tok_file == NULL){
         cerr << "Failed to open tok_file\n";
         return 1;
     }   
     cpp_popen(filename);
-    
     int parse_rc = yyparse();
-    if (parse_rc) {
+
+    
+   cpp_pclose();
+   //yylex_destroy();
+    if (yydebug or yy_flex_debug) {
+      fprintf (stderr, "Dumping parser::root:\n");
+      if (parser::root != nullptr) parser::root->dump_tree (stderr);
+      fprintf (stderr, "Dumping string_set:\n");
+      string_set::dump (stderr);
+   } 
+   if (parse_rc) {
         errprintf ("parse failed (%d)\n", parse_rc);
     }
     else{
         create_astree(ast_outfile);
     }
     create_str(str_outfile);
-    
-   cpp_pclose();
-   yylex_destroy();
-     
    fclose(tok_file);
       
    return exit_status;

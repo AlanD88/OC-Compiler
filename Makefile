@@ -8,7 +8,7 @@ CPP       = g++ -g -O0 -Wall -Wextra -std=gnu++14
 MKDEPS    = g++ -MM -std=gnu++14
 GRIND     = valgrind --leak-check=full --show-reachable=yes
 FLEX      = flex --outfile=${LEXCPP}
-BISON     = bison --defines=${PARSEHDR} --output=${PARSECPP} 
+BISON     = bison --defines=${PARSEHDR} --output=${PARSECPP} --xml
 XML2HTML  = xsltproc /usr/share/bison/xslt/xml2xhtml.xsl
 
 MODULES   = astree lyutils string_set auxlib
@@ -37,61 +37,61 @@ LISTSRC   = ${ALLSRC} ${DEPSFILE} ${PARSEHDR}
 all : ${EXECBIN}
 
 ${EXECBIN} : ${OBJECTS}
-    ${CPP} -o${EXECBIN} ${OBJECTS}
+	${CPP} -o${EXECBIN} ${OBJECTS}
 
 yylex.o : yylex.cpp
-    @ # Suppress warning message from flex compilation.
-    ${CPP} -Wno-sign-compare -c $<
+	@ # Suppress warning message from flex compilation.
+	${CPP} -Wno-sign-compare -c $<
 
 %.o : %.cpp
-    ${CPP} -c $<
+	${CPP} -c $<
 
 ${LEXCPP} : ${FLEXSRC}
-    ${FLEX} ${FLEXSRC}
+	${FLEX} ${FLEXSRC}
 
 ${PARSECPP} ${PARSEHDR} : ${BISONSRC}
-    ${BISON} ${BISONSRC}
-    ${XML2HTML} yyparse.xml >yyparse.html
+	${BISON} ${BISONSRC}
+	${XML2HTML} yyparse.xml >yyparse.html
 
 
 ci : ${ALLSRC} ${TESTINS}
-    - checksource ${ALLSRC}
-    - cpplint.py.perl ${CPPSRC}
-    cid + ${ALLSRC} ${TESTINS} test?.inh
+	- checksource ${ALLSRC}
+	- cpplint.py.perl ${CPPSRC}
+	cid + ${ALLSRC} ${TESTINS} test?.inh
 
 lis : ${LISTSRC} tests
-    mkpspdf List.source.ps ${LISTSRC}
-    mkpspdf List.output.ps ${REPORTS} \
-        ${foreach test, ${TESTINS:.in=}, \
-        ${patsubst %, ${test}.%, in out err log}}
+	mkpspdf List.source.ps ${LISTSRC}
+	mkpspdf List.output.ps ${REPORTS} \
+		${foreach test, ${TESTINS:.in=}, \
+		${patsubst %, ${test}.%, in out err log}}
 
 clean :
-    - rm ${OBJECTS} ${ALLGENS} ${REPORTS} ${DEPSFILE}
-    - rm ${foreach test, ${TESTINS:.in=}, \
-        ${patsubst %, ${test}.%, out err log}}
+	- rm ${OBJECTS} ${ALLGENS} ${REPORTS} ${DEPSFILE}
+	- rm ${foreach test, ${TESTINS:.in=}, \
+		${patsubst %, ${test}.%, out err log}}
 
 spotless : clean
-    - rm ${EXECBIN} List.*.ps List.*.pdf
+	- rm ${EXECBIN} List.*.ps List.*.pdf
 
 deps : ${ALLCSRC}
-    @ echo "# ${DEPSFILE} created `date` by ${MAKE}" >${DEPSFILE}
-    ${MKDEPS} ${ALLCSRC} >>${DEPSFILE}
+	@ echo "# ${DEPSFILE} created `date` by ${MAKE}" >${DEPSFILE}
+	${MKDEPS} ${ALLCSRC} >>${DEPSFILE}
 
 ${DEPSFILE} :
-    @ touch ${DEPSFILE}
-    ${MAKE} --no-print-directory deps
+	@ touch ${DEPSFILE}
+	${MAKE} --no-print-directory deps
 
 tests : ${EXECBIN}
-    touch ${TESTINS}
-    make --no-print-directory ${TESTINS:.in=.out}
+	touch ${TESTINS}
+	make --no-print-directory ${TESTINS:.in=.out}
 
 %.out %.err : %.in
-    ${GRIND} --log-file=$*.log ${EXECTEST} $< 1>$*.out 2>$*.err; \
-    echo EXIT STATUS = $$? >>$*.log
+	${GRIND} --log-file=$*.log ${EXECTEST} $< 1>$*.out 2>$*.err; \
+	echo EXIT STATUS = $$? >>$*.log
 
 again :
-    gmake --no-print-directory spotless deps ci all lis
-    
+	gmake --no-print-directory spotless deps ci all lis
+	
 ifeq "${NEEDINCL}" ""
 include ${DEPSFILE}
 endif

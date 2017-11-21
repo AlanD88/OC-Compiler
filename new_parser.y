@@ -15,12 +15,14 @@
 %token-table
 %verbose
 
-%destructor { destroy ($$); } <>
-%printer { astree::dump (yyoutput, $$); } <>
+%token ROOT
+
+
 
 %initial-action {
    parser::root = new astree (ROOT, {0, 0, 0}, "<<ROOT>>");
 }
+
 
 %token TOK_VOID TOK_CHAR TOK_INT TOK_STRING
 %token TOK_IF TOK_ELSE TOK_WHILE TOK_RETURN TOK_STRUCT
@@ -41,9 +43,13 @@
 %left '+' '-'
 %left '*' '/' '%'
 %right TOK_POS TOK_NEG '!' TOK_NEW
-%left TOK_ARRAY TOK_FIELD TOK_FUNCTION
+%left '[' TOK_FIELD TOK_FUNCTION '.'
 
 %nonassoc '('
+
+
+
+
 
 %start start
 
@@ -51,33 +57,35 @@
 
 //--------------Program Rules------------
 
-start   : program           { parser::root = $1; }
+start   : program           { $$ = parser::root = $1; }
         ;
         
 program : program structdef { $$ = $1->adopt($2); }
         | program function  { $$ = $1->adopt($2); }
         | program statement { $$ = $1->adopt($2); }
-        | program error '}' { $$ = $1; }
-        | program error ';' { $$ = $1; }
+        | program error '}' { $$ = $1; destroy($3);}
+        | program error ';' { $$ = $1; destroy($3);}
         |                   {$$ = parser::root; }
         ;
-
-
+        
 structdef   : struct2 '}' 
                 { 
                     $$ = $1; 
+                    destroy($2);
                 }
             ;
           
 struct2     : struct2 fielddecl ';' 
                 { 
                     $$ = $1->adopt($2); 
-                    destroy ($3); 
+                    destroy($3);
+                    
                 }
             | TOK_STRUCT TOK_IDENT '{' 
                 {
                     $2->symbol = TOK_TYPEID; 
                     $$ = $1->adopt($2); 
+                    destroy($3);
                 }
             ;
 
@@ -128,6 +136,7 @@ function    : identdecl funcparams ')'  block
                     destroy($3, $4);
                 }
             ;
+            
 funcparams  : '(' identdecl
                 {
                     $1->symbol = TOK_PARAMLIST;
@@ -157,10 +166,6 @@ block       : blockbody '}'
                     $1->symbol = TOK_BLOCK;
                     $$ = $1;
                     destroy($2);
-                }
-            | ';'
-                {
-                    $$ = $1;
                 }
             ;
             
@@ -198,7 +203,7 @@ while       : TOK_WHILE '(' expr ')' statement
                 }
             ;
             
-ifelse      : TOK_IF '(' expr ')' statement
+ifelse      : TOK_IF '(' expr ')' statement %prec TOK_ELSE
                 {
                     $$ = $1->adopt($3, $5);
                     destroy($2, $4);
@@ -209,6 +214,7 @@ ifelse      : TOK_IF '(' expr ')' statement
                     $7->symbol = TOK_IFELSE;
                     $$ = $1->adopt($7);
                     destroy($2, $4);
+                    destroy($6);
                 }
             ;
         
@@ -225,58 +231,31 @@ return      : TOK_RETURN expr ';'
                 }
             ;
           
-expr        : expr binop expr
-                {
-                    $$ = $2->adopt($1, $3); 
-                }
-            | unop expr
-                {
-                    $$ = $$->adopt($2);
-                }
-            | allocator 
-                { 
-                    $$ = $1; 
-                }
-            | call    
-                {
-                    $$ = $1;
-                }
-            |   '(' expr ')'
-                {
-                    $$ = $2;
-                    destroy($1, $3);
-                }
-            | variable 
-                {
-                    $$ = $1;
-                }
-            | constant  
-                {
-                    $$ = $1;
-                }
-            ;
-                
-binop       : TOK_EQ    { $$ = $1; }
-            | TOK_NE    { $$ = $1; }
-            | TOK_LT    { $$ = $1; }
-            | TOK_LE    { $$ = $1; }
-            | TOK_GT    { $$ = $1; }
-            | TOK_GE    { $$ = $1; }
-            | '+'       { $$ = $1; }
-            | '-'       { $$ = $1; }
-            | '*'       { $$ = $1; }
-            | '/'       { $$ = $1; }
-            | '='       { $$ = $1; }
-            | '%'       { $$ = $1; }
+expr        : expr TOK_EQ expr          { $$ = $2->adopt($1, $3); }
+            | expr TOK_NE expr          { $$ = $2->adopt($1, $3); }
+            | expr TOK_LT expr          { $$ = $2->adopt($1, $3); }
+            | expr TOK_LE expr          { $$ = $2->adopt($1, $3); }
+            | expr TOK_GT expr          { $$ = $2->adopt($1, $3); }
+            | expr TOK_GE expr          { $$ = $2->adopt($1, $3); }
+            | expr '+' expr             { $$ = $2->adopt($1, $3); }
+            | expr '-' expr             { $$ = $2->adopt($1, $3); }
+            | expr '*' expr             { $$ = $2->adopt($1, $3); }
+            | expr '/' expr             { $$ = $2->adopt($1, $3); }
+            | expr '=' expr             { $$ = $2->adopt($1, $3); }
+            | expr '%' expr             { $$ = $2->adopt($1, $3); }
+            | '+' expr %prec TOK_POS    
+                                { $$ = $1->adopt_sym($2, TOK_POS); }
+            | '-' expr %prec TOK_NEG    
+                                { $$ = $1->adopt_sym($2, TOK_NEG); }
+            | '!' expr                  { $$ = $1->adopt($2); }
+            | allocator                 { $$ = $1; }
+            | call                      { $$ = $1; }
+            | '(' expr ')'              { $$ = $2; destroy($1, $3); }
+            | variable                  { $$ = $1; }
+            | constant                  { $$ = $1; }
             ;
             
-unop        : TOK_POS    { $$ = $1; }
-            | TOK_NEG    { $$ = $1; }
-            | '!'        { $$ = $1; }
-            | TOK_NEW    { $$ = $1; }
-            ;
-            
-allocator   : TOK_NEW TOK_IDENT '(' ')'
+ allocator  : TOK_NEW TOK_IDENT '(' ')'
                 {
                     $2->symbol = TOK_TYPEID;
                     $$ = $1->adopt($2);
@@ -287,6 +266,7 @@ allocator   : TOK_NEW TOK_IDENT '(' ')'
                     $1->symbol = TOK_NEWSTRING;
                     $$ = $1->adopt($4);
                     destroy($3, $5);
+                    destroy($2);
                 }
             | TOK_NEW basetype '[' expr ']'
                 {
@@ -295,7 +275,7 @@ allocator   : TOK_NEW TOK_IDENT '(' ')'
                     destroy($3, $5);
                 }
             ;
- 
+            
  call       : TOK_IDENT '(' ')'
                 {
                     $2->symbol = TOK_CALL;
@@ -321,7 +301,7 @@ callexprs   : TOK_IDENT '(' expr
                 }
             ;
 
-variable    : TOK_IDENT
+variable    : TOK_IDENT %prec '['
                 {
                     $$ = $1;
                 }
@@ -366,3 +346,5 @@ static void* yycalloc (size_t size) {
 }
 */
 
+%destructor { destroy ($$); } <>
+%printer { astree::dump (yyoutput, $$); } <>
