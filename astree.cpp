@@ -69,13 +69,25 @@ void astree::dump (FILE* outfile, astree* tree) {
 }
 
 void astree::print (FILE* outfile, astree* tree, int depth) {
-   fprintf (outfile, "; %*s", depth * 3, "");
-   fprintf (outfile, "%s \"%s\" (%zd.%zd.%zd)\n",
-            parser::get_tname (tree->symbol), tree->lexinfo->c_str(),
-            tree->lloc.filenr, tree->lloc.linenr, tree->lloc.offset);
-   for (astree* child: tree->children) {
-      astree::print (outfile, child, depth + 1);
-   }
+    for (int i = 0; i < depth; i++){
+        //print | line for formatting
+        fprintf(outfile, "| ");
+    }
+    
+    //Trim TOK_ from output
+    const char *tname = parser::get_tname (tree->symbol);
+    if (strstr(tname, "TOK_") == tname){
+        tname += 4;
+    }
+
+    //Print astree
+    fprintf(outfile, "%s \"%s\" (%zd.%zd.%zd)\n", 
+            tname, tree->lexinfo->c_str(), tree->lloc.filenr, 
+            tree->lloc.linenr, tree->lloc.offset);
+            
+    for (astree* child: tree->children) {
+        astree::print (outfile, child, depth + 1);
+    }
 }
 
 void destroy (astree* tree1, astree* tree2) {
