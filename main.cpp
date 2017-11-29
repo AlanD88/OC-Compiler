@@ -28,7 +28,6 @@ using namespace std;
 #include "string_set.h"
 #include "auxlib.h"
 #include "astree.h"
-#include "emitter.h"
 #include "lyutils.h"
 
 //const string CPP = "/usr/bin/cpp -nostdinc";
